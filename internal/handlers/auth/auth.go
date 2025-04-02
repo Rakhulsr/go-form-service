@@ -160,35 +160,29 @@ func getGoogleUserData(accessToken string) (*domain.User, error) {
 	}
 	defer resp.Body.Close()
 
-	// Cek status kode dari Google API
 	if resp.StatusCode != http.StatusOK {
-		// Baca isi response jika bukan 200 OK
+
 		bodyBytes, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("unexpected response status: %d, response: %s", resp.StatusCode, string(bodyBytes))
 	}
 
-	// Dekode data response
 	var responseMap map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&responseMap); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %v", err)
 	}
 
-	// Logging response untuk debugging
 	fmt.Println("Google API Response:", responseMap)
 
-	// Ambil Google ID dari `sub`
 	googleID, ok := responseMap["id"].(string)
 	if !ok || googleID == "" {
 		return nil, fmt.Errorf("Google ID (id) not found in response")
 	}
 
-	// Ambil email
 	email, ok := responseMap["email"].(string)
 	if !ok || email == "" {
 		return nil, fmt.Errorf("email not found in response")
 	}
 
-	// Kembalikan user
 	userData := &domain.User{
 		GoogleID: googleID,
 		Email:    email,
