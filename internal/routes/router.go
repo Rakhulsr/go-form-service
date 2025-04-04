@@ -20,18 +20,17 @@ func NewRouter(db *gorm.DB) *mux.Router {
 	oauthRouter := router.PathPrefix("/auth").Subrouter()
 	oauthRepo := repositories.NewUserRepositoryImpl(db)
 	oauthService := services.NewUserServiceImpl(&oauthRepo, validator)
-
 	oauthHandler := auth.NewOAuthHandler(oauthService)
 
 	oauthRouter.HandleFunc("/login", oauthHandler.LoginPage).Methods("GET")
 	oauthRouter.HandleFunc("/google/login", oauthHandler.GoogleLogin).Methods("GET")
 	oauthRouter.HandleFunc("/google/callback", oauthHandler.GoogleCallback).Methods("GET")
-	oauthRouter.HandleFunc("/refresh-token", oauthHandler.RefreshAccessToken).Methods("POST")
+	oauthRouter.HandleFunc("/logout", oauthHandler.Logout).Methods("POST", "GET")
 
 	//home
-
+	middleware := middlewares.NewMiddlewareImpl(oauthService)
 	homeRouter := router.PathPrefix("/").Subrouter()
-	homeRouter.Use(middlewares.AuthMiddleware)
+	homeRouter.Use(middleware.AuthMiddleware)
 
 	homeRouter.HandleFunc("/home", home.HomePage).Methods("GET")
 

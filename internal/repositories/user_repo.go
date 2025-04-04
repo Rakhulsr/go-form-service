@@ -10,9 +10,10 @@ import (
 
 type UserRepositories interface {
 	FindById(userId int) (*domain.User, error)
-	// FindByEmail(email string) (*domain.User, error)
 	CreateUser(user domain.User) error
 	FindOrCreateByEmail(email string, googleID string) (*domain.User, error)
+	CreateSession(token domain.Session) error
+	FindSessionByUserID(userID uint) (*domain.Session, error)
 }
 
 type UserReporitoriesImpl struct {
@@ -49,16 +50,13 @@ func (u *UserReporitoriesImpl) FindById(userId int) (*domain.User, error) {
 func (u *UserReporitoriesImpl) FindOrCreateByEmail(email string, googleID string) (*domain.User, error) {
 	var user domain.User
 
-	// Coba cari user berdasarkan email
 	result := u.Db.Where("email = ?", email).First(&user)
 
-	// Jika user tidak ditemukan, buat user baru
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		user = domain.User{
 			Email: email,
 		}
 
-		// Masukkan googleID hanya jika tidak kosong
 		if googleID != "" {
 			user.GoogleID = googleID
 		}
@@ -67,9 +65,34 @@ func (u *UserReporitoriesImpl) FindOrCreateByEmail(email string, googleID string
 			return nil, err
 		}
 	} else if result.Error != nil {
-		// Jika terjadi error selain "record not found", kembalikan error
+
 		return nil, result.Error
 	}
 
 	return &user, nil
+}
+
+func (u *UserReporitoriesImpl) CreateSession(session domain.Session) error {
+	u.Db.Where("user_id", session.UserID).Delete(&domain.Session{})
+
+	if err := u.Db.Create(&session).Error; err != nil {
+		log.Printf("Failed to create session for user %d: %v", session.UserID, err)
+		return err
+	}
+
+	log.Printf("Session created successfully for user %d", session.UserID)
+	return nil
+}
+
+func (u *UserReporitoriesImpl) FindSessionByUserID(userID uint) (*domain.Session, error) {
+	var session domain.Session
+
+	result := u.Db.Where("user_id", userID).First(&session)
+
+	if result.Error != nil {
+
+		return nil, errors.New("session expired or not found")
+	}
+
+	return &session, nil
 }

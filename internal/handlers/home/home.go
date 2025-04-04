@@ -16,28 +16,16 @@ func HomePage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := utils.VerifyToken(cookie.Value)
-	if err != nil || !token.Valid {
-		log.Println("Failed to veirfy in home handler")
-
+	claims, err := utils.VerifyToken(cookie.Value)
+	if err != nil {
+		log.Println("Failed to verify token in home handler:", err)
 		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
 		return
 	}
-
-	claims, ok := token.Claims.(*utils.Claims)
-	if !ok {
-		log.Println("Failed to claims in home handler")
-
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
-
-	email := claims.Email
-	googleID := claims.GoogleID
 
 	tmpl, err := template.ParseFiles("../templates/home/home.html")
 	if err != nil {
-		http.Error(w, "Gagal memuat halaman", http.StatusInternalServerError)
+		http.Error(w, "Failed to load page", http.StatusInternalServerError)
 		return
 	}
 
@@ -45,8 +33,8 @@ func HomePage(w http.ResponseWriter, r *http.Request) {
 		Email    string
 		GoogleID string
 	}{
-		Email:    email,
-		GoogleID: googleID,
+		Email:    claims.Email,
+		GoogleID: claims.GoogleID,
 	}
 
 	tmpl.Execute(w, data)

@@ -15,12 +15,12 @@ type Config struct {
 	DBPassword         string
 	DBAddress          string
 	DBName             string
-	SecretJWT          string
 	DBPort             string
 	DBHost             string
 	GoogleCliendID     string
 	GoogleClientSecret string
 	GoogleRedirectURL  string
+	Secret             string
 }
 
 func LoadEnv() Config {
@@ -36,18 +36,19 @@ func LoadEnv() Config {
 	}
 
 	return Config{
-		PublicHost:         os.Getenv("PUBLIC_HOST"),
-		Port:               os.Getenv("PORT"),
-		DBUser:             os.Getenv("DB_USER"),
-		DBPassword:         os.Getenv("DB_PASSWORD"),
-		DBName:             os.Getenv("DB_NAME"),
-		DBAddress:          fmt.Sprintf("%s:%s", os.Getenv("DB_HOST"), os.Getenv("DB_PORT")),
-		SecretJWT:          os.Getenv("SECRET"),
+		PublicHost: os.Getenv("PUBLIC_HOST"),
+		Port:       os.Getenv("PORT"),
+		DBUser:     os.Getenv("DB_USER"),
+		DBPassword: os.Getenv("DB_PASSWORD"),
+		DBName:     os.Getenv("DB_NAME"),
+		DBAddress:  fmt.Sprintf("%s:%s", os.Getenv("DB_HOST"), os.Getenv("DB_PORT")),
+
 		DBPort:             os.Getenv("DB_PORT"),
 		DBHost:             os.Getenv("DB_HOST"),
 		GoogleCliendID:     os.Getenv("GOOGLE_CLIENT_ID"),
 		GoogleClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
 		GoogleRedirectURL:  os.Getenv("GOOGLE_REDIRECT_URL"),
+		Secret:             os.Getenv("JWTSECRET"),
 	}
 
 }

@@ -12,7 +12,6 @@ import (
 	"github.com/Rakhulsr/go-form-service/config"
 	"github.com/Rakhulsr/go-form-service/internal/models/domain"
 	"github.com/Rakhulsr/go-form-service/internal/services"
-	"github.com/Rakhulsr/go-form-service/utils"
 	"golang.org/x/oauth2"
 )
 
@@ -74,16 +73,11 @@ func (h *OauthHandlerImpl) GoogleCallback(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	fmt.Println(exUser)
-	accessToken, err := utils.GenerateAccesToken(userData.Email, userData.GoogleID)
-	if err != nil {
-		http.Error(w, "Failed to generate session token", http.StatusInternalServerError)
-		return
-	}
+	accessToken, refreshToken, err := h.UserService.LoginGoogle(userData.Email, userData.GoogleID, exUser.ID)
 
-	refreshToken, err := utils.GenerateRefreshToken(userData.Email, userData.GoogleID)
 	if err != nil {
-		http.Error(w, "Failed to generate refresh token", http.StatusInternalServerError)
+		log.Printf("Error generating tokens: %v", err)
+		http.Error(w, "Failed to generate tokens", http.StatusInternalServerError)
 		return
 	}
 
@@ -93,56 +87,11 @@ func (h *OauthHandlerImpl) GoogleCallback(w http.ResponseWriter, r *http.Request
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   false,
-		MaxAge:   86400,
+		MaxAge:   7 * 24 * 60 * 60,
 	})
-
-	http.SetCookie(w, &http.Cookie{
-		Name:     "access-token",
-		Value:    accessToken,
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   false,
-		MaxAge:   3600,
-	})
-
 	w.Header().Set("Authorization", "Bearer "+accessToken)
 
 	http.Redirect(w, r, "/home", http.StatusSeeOther)
-}
-
-func (h *OauthHandlerImpl) RefreshAccessToken(w http.ResponseWriter, r *http.Request) {
-
-	cookie, err := r.Cookie("refresh-token")
-	if err != nil {
-		http.Error(w, "Refresh token not found", http.StatusUnauthorized)
-		return
-	}
-
-	verifiedToken, err := utils.VerifyToken(cookie.Value)
-	if err != nil {
-		http.Error(w, "Invalid or expired refresh token", http.StatusUnauthorized)
-		return
-	}
-
-	claims, ok := verifiedToken.Claims.(*utils.Claims)
-	if !ok {
-		log.Println("Failed to extract claims in home handler")
-
-		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
-		return
-	}
-
-	email := claims.Email
-	googleID := claims.GoogleID
-
-	accessToken, err := utils.GenerateAccesToken(email, googleID)
-	if err != nil {
-		http.Error(w, "Failed to generate access token", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Authorization", "Bearer "+accessToken)
-	w.WriteHeader(http.StatusOK)
 }
 
 func getGoogleUserData(accessToken string) (*domain.User, error) {
@@ -171,8 +120,6 @@ func getGoogleUserData(accessToken string) (*domain.User, error) {
 		return nil, fmt.Errorf("failed to decode response: %v", err)
 	}
 
-	fmt.Println("Google API Response:", responseMap)
-
 	googleID, ok := responseMap["id"].(string)
 	if !ok || googleID == "" {
 		return nil, fmt.Errorf("Google ID (id) not found in response")
@@ -198,4 +145,18 @@ func (h *OauthHandlerImpl) LoginPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tmpl.Execute(w, nil)
+}
+
+func (h *OauthHandlerImpl) Logout(w http.ResponseWriter, r *http.Request) {
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh-token",
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false,
+		MaxAge:   -1,
+	})
+
+	http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
 }
